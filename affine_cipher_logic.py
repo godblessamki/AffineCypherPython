@@ -4,9 +4,9 @@ import re
 
 class AffineCipher:
     def __init__(self):
-        # Rozšířená abeceda - písmena A-Z + číslice 0-9
-        self.alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-        self.m = len(self.alphabet)  # 36 znaků
+        # Rozšířená abeceda - písmena A-Z + číslice 0-9 + speciální znaky
+        self.alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.,!?;:+-*/<>=()[]"
+        self.m = len(self.alphabet)
         
         # Mapování pro konverzi
         self.char_to_index = {char: i for i, char in enumerate(self.alphabet)}
@@ -14,7 +14,7 @@ class AffineCipher:
     
     def filter_input_text(self, text):
         """Filtruje vstupní text: odstraní diakritiku, převede na velká písmena,
-        nahradí mezery speciálním tokenem a odstraní speciální znaky."""
+        nahradí mezery speciálním tokenem."""
         if not text:
             return ""
         
@@ -42,16 +42,16 @@ class AffineCipher:
         upper_diakritic_map = {k.upper(): v for k, v in diakritic_map.items()}
         diakritic_map.update(upper_diakritic_map)
         
-        # Převod na velká písmena a odstranění diakritiky
+        # Převod a filtrování
         filtered = ""
         for char in text.upper():
             if char in diakritic_map:
                 filtered += diakritic_map[char]
             elif char == ' ':
                 filtered += 'XMEZERAX'
-            elif char.isalnum():  # Písmena a číslice
+            elif char in self.alphabet:  # Znak je v abecedě
                 filtered += char
-            # Speciální znaky ignorujeme
+            # Neznámé znaky ignorujeme
         
         return filtered
     
@@ -140,7 +140,7 @@ class AffineCipher:
         if a_inv is None:
             return None, f"Nepodařilo se najít multiplikativní inverzi pro klíč 'a' = {a}"
         
-        # Odstranění mezer a převod na velká písmena
+        # Odstranění mezer (které nejsou XMEZERAX) a převod na velká písmena
         clean_cipher = ciphertext.replace(' ', '').upper()
         
         if not clean_cipher:
@@ -190,6 +190,7 @@ def test_affine_cipher():
     print("=== Test Afinní šifry ===")
     print(f"Původní text: {test_text}")
     print(f"Klíče: a={a}, b={b}")
+    print(f"Velikost abecedy: {cipher.m}")
     
     # Šifrování
     encrypt_result, encrypt_error = cipher.encrypt(test_text, a, b)
@@ -199,8 +200,6 @@ def test_affine_cipher():
     
     print(f"Filtrovaný text: {encrypt_result['filtered_text']}")
     print(f"Zašifrovaný text: {encrypt_result['formatted_ciphertext']}")
-    print(f"Původní abeceda: {encrypt_result['original_alphabet']}")
-    print(f"Šifrová abeceda:  {encrypt_result['cipher_alphabet']}")
     
     # Dešifrování
     decrypt_result, decrypt_error = cipher.decrypt(encrypt_result['formatted_ciphertext'], a, b)
@@ -210,12 +209,27 @@ def test_affine_cipher():
     
     print(f"Dešifrovaný text: {decrypt_result['restored_text']}")
     
-    # Ověření
-    original_upper = test_text.upper().replace(',', '').replace('.', '')
-    if decrypt_result['restored_text'] == cipher.filter_input_text(test_text).replace('XMEZERAX', ' '):
-        print("✓ Test prošel úspěšně!")
-    else:
-        print("✗ Test selhal!")
+    # Test se speciálními znaky
+    print("\n=== Test se speciálními znaky ===")
+    test_text2 = "Test < + ) = znaky!"
+    print(f"Původní text: {test_text2}")
+    
+    encrypt_result2, encrypt_error2 = cipher.encrypt(test_text2, a, b)
+    if encrypt_error2:
+        print(f"Chyba: {encrypt_error2}")
+        return
+        
+    print(f"Filtrovaný: {encrypt_result2['filtered_text']}")
+    print(f"Zašifrovaný: {encrypt_result2['formatted_ciphertext']}")
+    
+    decrypt_result2, decrypt_error2 = cipher.decrypt(encrypt_result2['formatted_ciphertext'], a, b)
+    if not decrypt_error2:
+        print(f"Dešifrovaný: {decrypt_result2['restored_text']}")
+        
+        if decrypt_result2['restored_text'] == encrypt_result2['filtered_text'].replace('XMEZERAX', ' '):
+            print("✓ Test prošel úspěšně!")
+        else:
+            print("✗ Test selhal!")
 
 if __name__ == "__main__":
     test_affine_cipher()
